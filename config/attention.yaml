@@ -1,0 +1,44 @@
+---
+# Model configuration
+model_name: "resnet50_32x4d + attention in batch"
+backbone: "resnet18"
+num_classes: 5
+pretrained: true
+batch_size: 8
+
+# Transformers' configuration
+n_head: 8
+num_layers: 6
+d_model: 512
+dim_forward: 1024
+attention_dropout: 0.4
+
+# Loss function
+loss_func: "bceloss"
+
+# optimizer config
+optimizer_type: "SGD"
+max_lr: 0.01
+base_momentum: 0.85
+max_momentum: 0.9
+nestrov: false
+weight_decay: 0.00005
+
+# scheduler config
+scheduler_type: "1cycle"
+warmup: 0
+cool_down: 0
+num_cycle: 1
+epoch_per_cycle: 12
+
+
+# Other parameters
+dropout: 0.4
+attention_dropout: 0.2
+
+# Config for dataset
+image_batch: 36
+data_dir: "train36x256x256"
+# Transformation
+train_transformation: standard_transforms
+test_transformation: null
