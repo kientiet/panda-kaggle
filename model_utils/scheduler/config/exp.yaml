@@ -1,0 +1,16 @@
+---
+initial_lr: 0.001
+decay_rate: 0.97
+decay_steps: 2.5
+
+
+# ---
+# max_lr: 0.001
+# base_lr: 0.00001
+# step_up_epoch: 1
+# step_down_epoch: 2
+# gamma: 0.97
+# cycle_momentum: false
+# base_momentum: 0.9
+# max_momentum: 0.95
+# mode: "exp_range"

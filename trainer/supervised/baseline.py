@@ -33,8 +33,9 @@ class BaselineTrainer(SupervisedTrainerSkeleton):
       .view(-1, shape[1], shape[2] * image_batch, shape[3])
     logits = self.project_layer(logits)
 
-    # logits = torch.sigmoid(logits)
+    if self.stream["loss_func"] == "bceloss":
+      logits = torch.sigmoid(logits)
 
-    # return self.loss_func(logits.to(torch.double), labels), logits
-
-    return self.loss_func(logits, labels), logits
+      return self.loss_func(logits.to(torch.double), labels), logits
+    else:
+      return self.loss_func(logits / self.temperature, labels), logits

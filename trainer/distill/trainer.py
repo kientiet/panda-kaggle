@@ -7,8 +7,8 @@ import pytorch_lightning as pl
 import numpy as np
 
 from trainer.trainer import TrainerSkeleton
-from loss_func.get_loss_func import get_loss_func
-from evaluator.evaluator import Evaluator
+from model_utils.loss_func.get_loss_func import get_loss_func
+from utils.evaluator.evaluator import Evaluator
 
 class DistillTrainerSkeleton(TrainerSkeleton):
   def __init__(self,

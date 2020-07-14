@@ -1,0 +1,10 @@
+---
+max_lr: 0.0005
+epochs: 5 ## Epoch per cycle
+cycle_momentum: false
+base_momentum: 0.9
+max_momentum: 0.95
+div_factor: 1.0
+final_div_factor: 100
+pct_start: 0.0
+max_lr_decay_rate: 0.8

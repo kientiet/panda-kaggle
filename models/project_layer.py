@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from activation.mish import Mish
+from model_utils.activation.mish import Mish
 
 class ProjectLayer(nn.Module):
   def __init__(self,

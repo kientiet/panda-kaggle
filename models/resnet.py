@@ -3,7 +3,7 @@ import torch.nn as nn
 import torchvision
 from models.get_model import get_model
 
-from activation.mish import Mish
+from model_utils.activation.mish import Mish
 
 class ResNetModel(nn.Module):
   def __init__(self,

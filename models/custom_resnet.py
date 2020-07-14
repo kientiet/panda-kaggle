@@ -3,6 +3,7 @@ import torch.nn as nn
 import random
 from torchvision.models.resnet import _resnet, BasicBlock, Bottleneck
 
+
 def conv3x3(in_planes, out_planes, stride=1, groups=1, dilation=1):
     """3x3 convolution with padding"""
     return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
@@ -229,6 +230,7 @@ class ResNet(nn.Module):
 
       if self.last_layer_dropout > 0:
         x = self.last_layer_dropout(x)
+
       x = self.layer4(x)
 
       x = self.avgpool(x)
