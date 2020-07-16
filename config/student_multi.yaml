@@ -1,0 +1,44 @@
+---
+# Model configuration
+model_name: "student_multi/resnet18"
+backbone: "custom_resnet18"
+num_classes: 6
+pretrained: true
+batch_size: 16
+stochastic_depth_prob: 0.8
+
+# Teacher configuration
+label_type: "soft"
+loss_type: "crossentropy"
+
+# Sample configuration
+sample: "upsample"
+
+# Loss function
+loss_func: "bam_loss_func"
+coeff: 1.
+anneal_type: true
+temperature: 1.
+
+# Transformation
+train_aug: standard_transforms
+test_aug: standard_transforms
+
+# optimizer config
+optimizer_type: "Over9000"
+max_lr: 0.0005
+base_momentum: 0.85
+max_momentum: 0.9
+nestrov: false
+weight_decay: 0.00005
+
+# scheduler config
+scheduler_type: "1cycle"
+warmup: 0
+cool_down: 0
+total_epoch: 15
+
+
+# Other parameters
+dropout: 0.4
+data_dir: "train12x128x128"
