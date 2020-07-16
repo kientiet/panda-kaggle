@@ -5,21 +5,21 @@ from models.custom_resnet import custom_resnet34, custom_resnet18, custom_resnet
 
 def load_resnet18(pretrained):
   if pretrained:
-    return torch.hub.load('facebookresearch/semi-supervised-ImageNet1K-models', 'resnet18_ssl')
+    return torch.hub.load('facebookresearch/semi-supervised-ImageNet1K-models', 'resnet18_swsl')
 
   return torchvision.models.resnet18(pretrained = False)
 
 
 def load_resnet50(pretrained):
   if pretrained:
-    return torch.hub.load('facebookresearch/semi-supervised-ImageNet1K-models', 'resnet50_ssl')
+    return torch.hub.load('facebookresearch/semi-supervised-ImageNet1K-models', 'resnet50_swsl')
 
   return torchvision.models.resnet50(pretrained = False)
 
 
 def load_resnext50_32x4d(pretrained):
   if pretrained:
-    return torch.hub.load('facebookresearch/semi-supervised-ImageNet1K-models', 'resnext50_32x4d_ssl')
+    return torch.hub.load('facebookresearch/semi-supervised-ImageNet1K-models', 'resnext50_32x4d_swsl')
 
   return torchvision.models.resnext50_32x4d(pretrained = False)
 

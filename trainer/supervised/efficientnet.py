@@ -8,7 +8,7 @@ from models.project_layer import ProjectLayer
 
 config_dir = os.path.join(os.getcwd(), "config", "resnet.yaml")
 
-class EfficientNetModel(SupervisedTrainerSkeleton):
+class EfficientNeTrainer(SupervisedTrainerSkeleton):
   def __init__(self, trainset = None, valset = None):
     super().__init__(yaml_file = config_dir, trainset = trainset, valset = valset)
     self.init_model()

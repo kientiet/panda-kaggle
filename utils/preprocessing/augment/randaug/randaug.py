@@ -412,7 +412,7 @@ brightness = TransformT('Brightness', _enhancer_impl(
 
 sharpness = TransformT('Sharpness', _enhancer_impl(ImageEnhance.Sharpness))
 
-def _color_distortion_impl(img, s = 1.0):
+def _color_distortion_impl(img, level, _, s = 1.0):
     color_jitter = transforms.ColorJitter(0.8 * s, 0.8 * s, 0.8 * s, 0.2 * s)
     rnd_color_jitter = transforms.RandomApply([color_jitter], p = 0.8)
     rnd_gray = transforms.RandomGrayscale(p = 0.2)
@@ -448,8 +448,8 @@ ALL_TRANSFORMS = [
     smooth,
     color,
     auto_contrast,
-    cutout
-    # color_distortion
+    cutout,
+    color_distortion
 ]
 
 NAME_TO_TRANSFORM = {t.name: t for t in ALL_TRANSFORMS}

@@ -1,5 +1,6 @@
 import os
 import torch
+import torch.nn as nn
 import pytorch_lightning as pl
 from trainer.supervised.trainer import SupervisedTrainerSkeleton
 
@@ -39,3 +40,5 @@ class BaselineTrainer(SupervisedTrainerSkeleton):
       return self.loss_func(logits.to(torch.double), labels), logits
     else:
       return self.loss_func(logits / self.temperature, labels), logits
+
+

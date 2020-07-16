@@ -1,20 +1,25 @@
 ---
 # Model configuration
-model_name: "resnet50_32x4d_teacher"
-backbone: "resnet50_32x4d"
+model_name: "multi/resnet18"
+backbone: "custom_resnet18"
 num_classes: 6
 pretrained: true
 batch_size: 16
+stochastic_depth_prob: 0.8
+
+# Data method
+sample: "upsample"
 
 # Loss function
 loss_func: "crossentropy"
+temperature: 1.0
 
 # Transformation
-train_transformation: standard_transforms
-test_transformation: null
+train_aug: standard_transforms
+test_aug: standard_transforms
 
 # optimizer config
-optimizer_type: "SGD"
+optimizer_type: "Over9000"
 max_lr: 0.01
 base_momentum: 0.85
 max_momentum: 0.9
@@ -25,10 +30,7 @@ weight_decay: 0.00005
 scheduler_type: "1cycle"
 warmup: 0
 cool_down: 0
-num_cycle: 3
-epoch_per_cycle: 5
-
+total_epoch: 15
 
 # Other parameters
-dropout: 0.4
-data_dir: "train16x128x128"
+data_dir: "train12x128x128"

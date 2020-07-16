@@ -1,16 +1,14 @@
 ---
 # Model configuration
-model_name: "outliers/resnet50_32x4d"
-backbone: "resnet50_32x4d"
+model_name: "outliers/resnet50"
+backbone: "custom_resnet50"
 num_classes: 6
-pretrained: false
+pretrained: true
 batch_size: 16
-
-# Student configuration
-generation: 3
+stochastic_depth_prob: 0.8
 
 # Teacher configuration
-teacher_list: "checkpoint/baseline/resnet50_32x4d/version0/epoch=8.ckpt"
+teacher_list: "checkpoint/baseline/resnet50/version3/epoch=14.ckpt"
 label_type: "soft"
 keep_classes: 2
 
@@ -19,28 +17,30 @@ sample: "downsample"
 
 # Loss function
 loss_func: "outliers_loss_func"
-coeff: 1.
+coeff: 0.1
 anneal_type: false
 temperature: 1.0
 
 # Transformation
-train_transformation: student_transformation
-test_transformation: null
+student_aug: student_transformation
+teacher_aug: standard_transforms
+test_aug: standard_transforms
+train_aug: null
 
 # optimizer config
 optimizer_type: "Over9000"
-max_lr: 0.04
-base_momentum: 0.85
-max_momentum: 0.9
+max_lr: 0.005
+base_momentum: 0.9
+max_momentum: 0.95
 nestrov: false
 weight_decay: 0.00005
 
 # scheduler config
-scheduler_type: "1cycle"
+scheduler_type: "exp"
 warmup: 0
 cool_down: 0
-total_epoch: 15
+total_epoch: 100
 
 
 # Other parameters
-data_dir: "normalized_train12x128x128"
+data_dir: "train12x128x128"

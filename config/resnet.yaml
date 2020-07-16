@@ -1,7 +1,7 @@
 ---
 # Model configuration
-model_name: "baseline/resnet50_32x4d"
-backbone: "resnet50_32x4d"
+model_name: "baseline/resnet50"
+backbone: "resnet50"
 num_classes: 6
 pretrained: true
 batch_size: 16
@@ -11,11 +11,11 @@ sample: "downsample"
 
 # Loss function
 loss_func: "crossentropy"
-temperature: 1.2
+temperature: 1.0
 
 # Transformation
-train_transformation: standard_transforms
-test_transformation: null
+train_aug: standard_transforms
+test_aug: standard_transforms
 
 # optimizer config
 optimizer_type: "Over9000"
@@ -33,4 +33,5 @@ warmup: 0
 
 # Other parameters
 dropout: 0.4
-data_dir: "normalized_train12x128x128"
+data_dir: "train12x128x128"
+fix_res: "train12x224x224"

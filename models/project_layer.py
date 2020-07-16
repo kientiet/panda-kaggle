@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import numpy as np
 
 from model_utils.activation.mish import Mish
 
@@ -15,13 +16,20 @@ class ProjectLayer(nn.Module):
     self.avg_pooling = nn.AdaptiveAvgPool2d(1)
     self.max_pooling = nn.AdaptiveMaxPool2d(1)
     self.head = nn.Sequential(nn.Flatten(),
-                              nn.Linear(2 * num_channel, 512),
+                              nn.Linear(2 * num_channel, 512, bias = False),
                               Mish(),
                               nn.BatchNorm1d(512),
                               nn.Dropout(0.5),
-                              nn.Linear(512, num_classes)
+                              nn.Linear(512, num_classes, bias = False)
                               )
     self.is_pooling = is_pooling
+    self.init_weight()
+
+  def init_weight(self):
+    for m in self.modules():
+      if isinstance(m, nn.Linear):
+        nn.init.normal_(m.weight, 0, np.sqrt(2. / (m.out_features * m.in_features)))
+
 
   def forward(self, inputs):
     if self.is_pooling:

@@ -9,30 +9,34 @@ TRAIN = os.path.join(os.getcwd(), "data", "prostate-cancer-grade-assessment", "t
 MASKS = os.path.join(os.getcwd(), "data", "prostate-cancer-grade-assessment", "train_label_masks")
 OUT_TRAIN = os.path.join(os.getcwd(), "data", "train")
 OUT_MASKS = os.path.join(os.getcwd(), "data", "mask")
-sz = 256
-N = 36
 
+tile_size = 256
+n_tiles = 12
 
-def tile(img):
+def get_tiles(img, mode=0):
     result = []
-    shape = img.shape
-    pad0,pad1 = (sz - shape[0] % sz) % sz, (sz - shape[1] % sz) % sz
+    h, w, c = img.shape
+    pad_h = (tile_size - h % tile_size) % tile_size + ((tile_size * mode) // 2)
+    pad_w = (tile_size - w % tile_size) % tile_size + ((tile_size * mode) // 2)
 
-    img = np.pad(img, [[pad0 // 2,pad0 - pad0 // 2], [pad1 // 2,pad1 - pad1 // 2], [0, 0]],
-                constant_values = 255)
-    img = img.reshape(img.shape[0] // sz, sz, img.shape[1] //sz, sz, 3)
-    img = img.transpose(0, 2, 1, 3, 4).reshape(-1, sz, sz, 3)
+    img2 = np.pad(img,[[pad_h // 2, pad_h - pad_h // 2], [pad_w // 2,pad_w - pad_w//2], [0,0]], constant_values=255)
+    img3 = img2.reshape(
+        img2.shape[0] // tile_size,
+        tile_size,
+        img2.shape[1] // tile_size,
+        tile_size,
+        3
+    )
 
-    if len(img) < N:
-      img = np.pad(img, [[0, N - len(img)],[0, 0], [0, 0], [0, 0]] ,constant_values = 255)
-
-    idxs = np.argsort(img.reshape(img.shape[0], -1).sum(-1))[:N]
-    img = img[idxs]
-
-    for i in range(len(img)):
-      result.append({'img': img[i],
-          'idx':i})
-    return result
+    img3 = img3.transpose(0,2,1,3,4).reshape(-1, tile_size, tile_size,3)
+    n_tiles_with_info = (img3.reshape(img3.shape[0],-1).sum(1) < tile_size ** 2 * 3 * 255).sum()
+    if len(img3) < n_tiles:
+        img3 = np.pad(img3,[[0,n_tiles-len(img3)],[0,0],[0,0],[0,0]], constant_values=255)
+    idxs = np.argsort(img3.reshape(img3.shape[0],-1).sum(-1))[:n_tiles]
+    img3 = img3[idxs]
+    for i in range(len(img3)):
+        result.append({'img':img3[i], 'idx':i})
+    return result, n_tiles_with_info >= n_tiles
 
 
 def zip_data():
@@ -41,21 +45,11 @@ def zip_data():
   names = [name.split(".")[0] for name in os.listdir(TRAIN)]
 
   for name in tqdm(names):
-    img = skimage.io.MultiImage(os.path.join(TRAIN, name + '.tiff'))[-1]
-    # mask = skimage.io.MultiImage(os.path.join(MASKS, name + '_mask.tiff'))[-1]
-    tiles = tile(img)
-
+    img = skimage.io.MultiImage(os.path.join(TRAIN, name + '.tiff'))[1]
+    tiles, _ = get_tiles(img)
     for t in tiles:
       img, idx = t['img'],  t['idx']
-
-      x_tot.append((img / 255.0).reshape(-1, 3).mean(0))
-      x2_tot.append(((img / 255.0) ** 2).reshape(-1, 3).mean(0))
-
-      #if read with PIL RGB turns into BGR
-      # img = cv2.imencode('.png', cv2.cvtColor(img, cv2.COLOR_RGB2BGR))[1]
       cv2.imwrite(os.path.join(OUT_TRAIN, f"{name}_{idx}.png"), img)
-      # mask = cv2.imencode('.png', mask[:, :, 0])[1]
-      # cv2.imwrite(os.path.join(OUT_MASKS, f"{name}_{idx}.png"), mask)
 
 
 if __name__ == "__main__":

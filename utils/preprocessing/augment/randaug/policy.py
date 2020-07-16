@@ -9,8 +9,11 @@ def randaug_policies():
   trans_list = get_trans_list()
   op_list = []
   for trans in trans_list:
-    for magnitude in range(1, 4):
-      op_list += [(trans, 0.5, magnitude)]
+    for magnitude in range(1, 40):
+      if trans == "cutout":
+        op_list += [(trans, 0.5, magnitude * 2)]
+      else:
+        op_list += [(trans, 0.5, magnitude)]
 
   policies = []
   for op_1 in op_list:

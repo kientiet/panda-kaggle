@@ -10,13 +10,6 @@ dataframe_dir = os.path.join(data_dir, "train.csv")
 random_state = 42
 test_sample = 100
 
-def split_by_institution(table):
-  data_provider = table["data_provider"].unique()
-  dataset = {}
-  for provider in data_provider:
-    dataset[provider] = table[table["data_provider"] == provider]
-  return dataset
-
 
 def split_dataframe(table):
   test = pd.DataFrame(columns = table.columns)

@@ -2,9 +2,9 @@ from torch.optim.lr_scheduler import _LRScheduler
 
 
 class ExponentialStep(_LRScheduler):
-  def __init__(self, optimizer, initial_lr, decay_steps, decay_rate):
-    super(ExponentialStep, self).__init__(optimizer, last_epoch = -1)
-    self.initial_lr = initial_lr
+  def __init__(self, optimizer, decay_steps, decay_rate):
+    super().__init__(optimizer, last_epoch = -1)
+
     self.decay_steps = decay_steps
     self.decay_rate = decay_rate
     self.num_epoch = 0

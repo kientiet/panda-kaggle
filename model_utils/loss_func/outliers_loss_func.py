@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 class OutliersLoss(nn.Module):
   def __init__(self, anneal = None, **kwags):
     super().__init__()
@@ -13,7 +12,8 @@ class OutliersLoss(nn.Module):
 
     # Default loss
     self.cross_entropy = nn.CrossEntropyLoss()
-    self.kl_loss = nn.KLDivLoss(reduction = "sum")
+    self.kl_loss = nn.KLDivLoss(reduction = "batchmean")
+
     if self.anneal:
       self.step_count(total_step = kwags["total_step"])
     else:
@@ -30,15 +30,32 @@ class OutliersLoss(nn.Module):
     self.coeff += self.inc_per_step
 
 
+  def masked_softmax(self, logits, mask, dim = 1, epsilon = 1e-5):
+      exps = torch.exp(logits)
+      masked_exps = exps * mask.float()
+      masked_sums = masked_exps.sum(dim, keepdim=True) + epsilon
+      return masked_exps / masked_sums
+
+
+  def compute_kl_loss(self, student_logits, teacher_logits):
+    _, teacher_index = torch.sort(F.softmax(teacher_logits, dim = -1), dim = -1, descending = True)
+    teacher_prob = torch.gather(teacher_logits, 1, teacher_index[:, :self.keep_classes])
+    teacher_prob = F.softmax(teacher_prob, dim = -1)
+
+    student_prob = torch.gather(student_logits, 1, teacher_index[:, :self.keep_classes])
+    student_prob = F.log_softmax(student_prob, dim = -1)
+
+    kl_loss = self.kl_loss(student_prob, teacher_prob)
+
+    # breakpoint()
+    return kl_loss
+
+
   def forward(self, logits, hard_label, soft_logits, **kwags):
     hard_loss = self.cross_entropy(logits, hard_label)
     if kwags["running_mode"] == "training":
-      student_prob, student_index = torch.sort(logits, dim = -1, descending = True)
-      teacher_prob, teacher_index = torch.sort(soft_logits, dim = -1, descending = True)
 
-      student_prob = student_prob[:, :self.keep_classes]
-      teacher_prob = teacher_prob[:, :self.keep_classes]
-      soft_loss = self.kl_loss(F.log_softmax(student_prob, dim = -1), F.softmax(teacher_prob, dim = -1))
+      soft_loss = self.compute_kl_loss(logits, soft_logits)
 
       if not self.anneal or self.anneal is None:
         return hard_loss + self.coeff * soft_loss, hard_loss, soft_loss, self.coeff

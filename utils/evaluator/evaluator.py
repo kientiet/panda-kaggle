@@ -25,7 +25,7 @@ class Evaluator:
       "kappa_score/radboud": cohen_kappa_score(y_true[raboud_index], y_pred[raboud_index], weights = "quadratic"),
       "kappa_score/karolinska": cohen_kappa_score(y_true[karolinska_index], y_pred[karolinska_index], weights = "quadratic"),
 
-      "accuracy_score/total": accuracy_score(y_true, y_pred),
+      "accuracy_score/accuracy_score": accuracy_score(y_true, y_pred),
       "accuracy_score/radboud": accuracy_score(y_true[raboud_index], y_pred[raboud_index]),
       "accuracy_score/karolinska": accuracy_score(y_true[karolinska_index], y_pred[karolinska_index]),
     }
@@ -33,6 +33,7 @@ class Evaluator:
     return logs, total_fig, fig_karolinska, fig_radboud
 
   def plot_confusion_matrix(self, y_true, y_pred, normalized = False):
+    if len(y_true) == 0: return None
     cm = confusion_matrix(y_true, y_pred)
 
     if normalized:

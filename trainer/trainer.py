@@ -29,7 +29,7 @@ class TrainerSkeleton(pl.LightningModule):
       # Load data
       if trainset is None:
         print(">> Load from data frame")
-        self.trainset, self.valset = load_dataframe([stream["train_transformation"], stream["test_transformation"]], stream["data_dir"], \
+        self.trainset, self.valset = load_dataframe([stream["train_aug"], stream["test_aug"]], stream["data_dir"], \
           stream["loss_func"], stream["sample"])
       else:
         print(">> Assign exist data frame")
@@ -41,9 +41,6 @@ class TrainerSkeleton(pl.LightningModule):
 
       self.temperature = stream["temperature"]
       self.stream = stream
-
-    # Import the evaluator
-    self.evaluator = Evaluator(self.valset)
 
     # Loss function
     self.loss_func = get_loss_func(stream["loss_func"])
@@ -69,6 +66,12 @@ class TrainerSkeleton(pl.LightningModule):
   def optimizer_step(self, epoch, batch_idx, optimizer, optimizer_idx, second_order_closure=None):
     self.optimizer.step()
     self.optimizer.zero_grad()
+
+    weight = self.project_layer.head[1].weight.view(-1)
+    self.logger.experiment.add_histogram("project_layer_1", weight, self.global_step)
+
+    weight = self.project_layer.head[5].weight.view(-1)
+    self.logger.experiment.add_histogram("project_layer_5", weight, self.global_step)
 
     self.scheduler.step()
 
@@ -97,7 +100,12 @@ class TrainerSkeleton(pl.LightningModule):
 
   def reset_optimizer(self):
     # Initialize optimizer
-    params = list(self.encoder.parameters()) + list(self.project_layer.parameters())
+    params = []
+    for name, param in self.encoder.named_parameters():
+      if param.requires_grad:
+        params.append(param)
+
+    params = params + list(self.project_layer.parameters())
     if self.optimizer_type == "SGD":
       self.optimizer = optim.SGD(params,
                                 lr = self.max_lr,
@@ -117,17 +125,35 @@ class TrainerSkeleton(pl.LightningModule):
                                       total_epoch = self.get_max_epoches(),
                                       iteration_per_epoch = len(self.trainloader))
 
+  def freeze_model(self):
+    print(">> Freeze all except batchnorm")
+    self.freeze()
+    for name, p in self.encoder.named_parameters():
+      if "bn" in name:
+        p.requires_grad = True
+
+    for p in self.project_layer.parameters():
+      p.requires_grad = True
+
+    print(">> Reload the dataset and dataloader")
+    self.trainset, self.valset = load_dataframe([self.stream["train_transformation"], self.stream["test_transformation"]], self.stream["fix_res"], \
+      self.stream["loss_func"], self.stream["sample"])
+    self.trainloader = torch.utils.data.DataLoader(self.trainset, batch_size = self.stream["batch_size"], shuffle = True, num_workers = 4)
+    self.valloader = torch.utils.data.DataLoader(self.valset, batch_size = self.stream["batch_size"], shuffle = False, num_workers = 4)
+
+    print(">> Config parameters")
+    self.configure_optimizers()
+
 
   def validation_epoch_end(self, outputs):
-
     y_pred = []
     for batch in outputs:
       y_pred = np.concatenate((y_pred, batch["y_pred"]))
 
     tensorboard_logs, total_fig, fig_karolinska, fig_radboud = self.evaluator.evaluate_on_test_set(y_pred = y_pred)
-    self.logger.experiment.add_figure("confusion_matrix", total_fig, self.at_epoch)
-    self.logger.experiment.add_figure("karolinska_confusion_matrix", fig_karolinska, self.at_epoch)
-    self.logger.experiment.add_figure("radboud_confusion_matrix", fig_radboud, self.at_epoch)
+    if total_fig is not None: self.logger.experiment.add_figure("confusion_matrix", total_fig, self.at_epoch)
+    if fig_karolinska is not None: self.logger.experiment.add_figure("karolinska_confusion_matrix", fig_karolinska, self.at_epoch)
+    if fig_radboud is not None: self.logger.experiment.add_figure("radboud_confusion_matrix", fig_radboud, self.at_epoch)
 
     # Get the validation loss
     total_loss = torch.stack([batch["val_loss"] for batch in outputs]).mean()
@@ -155,4 +181,7 @@ class TrainerSkeleton(pl.LightningModule):
 
   def val_dataloader(self):
     print(">> Return valloader")
+    # Import the evaluator
+    self.evaluator = Evaluator(self.valset)
+
     return self.valloader

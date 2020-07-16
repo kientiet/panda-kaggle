@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
 import random
-from torchvision.models.resnet import _resnet, BasicBlock, Bottleneck
-
+import models.get_model as get_model
+from torchvision.models.resnet import BasicBlock, Bottleneck
 
 def conv3x3(in_planes, out_planes, stride=1, groups=1, dilation=1):
     """3x3 convolution with padding"""
@@ -43,7 +43,7 @@ class BasicBlock(nn.Module):
       identity = x
       out = None
 
-      if random.uniform(0, 1) < self.stochastic_depth_prob:
+      if random.uniform(0, 1) < self.stochastic_depth_prob or (not self.training):
         out = self.conv1(x)
         out = self.bn1(out)
         out = self.relu(out)
@@ -51,13 +51,18 @@ class BasicBlock(nn.Module):
         out = self.conv2(out)
         out = self.bn2(out)
 
+
       if self.downsample is not None:
-          identity = self.downsample(x)
+        identity = self.downsample(x)
 
       if out is None:
         out = torch.zeros_like(identity, requires_grad = False)
 
-      out += identity
+      if self.training:
+        out += identity
+      else:
+        out = self.stochastic_depth_prob * out + identity
+
       out = self.relu(out)
 
       return out
@@ -95,8 +100,8 @@ class Bottleneck(nn.Module):
       assert self.stochastic_depth_prob is not None
       identity = x
       out = None
-      if random.uniform(0, 1) < self.stochastic_depth_prob:
 
+      if random.uniform(0, 1) < self.stochastic_depth_prob or (not self.training):
         out = self.conv1(x)
         out = self.bn1(out)
         out = self.relu(out)
@@ -109,14 +114,17 @@ class Bottleneck(nn.Module):
         out = self.bn3(out)
 
       if self.downsample is not None:
-          identity = self.downsample(x)
+        identity = self.downsample(x)
 
       if out is None:
         out = torch.zeros_like(identity, requires_grad = False)
 
-      out += identity
-      out = self.relu(out)
+      if self.training:
+        out += identity
+      else:
+        out = self.stochastic_depth_prob * out + identity
 
+      out = self.relu(out)
       return out
 
 
@@ -243,8 +251,15 @@ class ResNet(nn.Module):
       return self._forward_impl(x)
 
 
-def _resnet(arch, block, layers, pretrained, progress, **kwargs):
+def _resnet_custom(arch, block, layers, pretrained, progress, **kwargs):
     model = ResNet(block, layers, **kwargs)
+    if pretrained:
+      print("\n\n>> Load from pretrained")
+      pretrained_model = get_model.get_model(arch, pretrained = True)
+      model_dict = pretrained_model.state_dict()
+      model.load_state_dict(model_dict)
+
+    print("Here", model.stochastic_depth_prob)
     return model
 
 
@@ -255,7 +270,7 @@ def custom_resnet18(pretrained=False, progress=True, **kwargs):
         pretrained (bool): If True, returns a model pre-trained on ImageNet
         progress (bool): If True, displays a progress bar of the download to stderr
     """
-    return _resnet('resnet18', BasicBlock, [2, 2, 2, 2], pretrained, progress,
+    return _resnet_custom('resnet18', BasicBlock, [2, 2, 2, 2], pretrained, progress,
                    **kwargs)
 
 
@@ -266,7 +281,7 @@ def custom_resnet34(pretrained=False, progress=True, **kwargs):
         pretrained (bool): If True, returns a model pre-trained on ImageNet
         progress (bool): If True, displays a progress bar of the download to stderr
     """
-    return _resnet('resnet34', BasicBlock, [3, 4, 6, 3], pretrained, progress,
+    return _resnet_custom('resnet34', BasicBlock, [3, 4, 6, 3], pretrained, progress,
                    **kwargs)
 
 
@@ -277,7 +292,7 @@ def custom_resnet50(pretrained=False, progress=True, **kwargs):
         pretrained (bool): If True, returns a model pre-trained on ImageNet
         progress (bool): If True, displays a progress bar of the download to stderr
     """
-    return _resnet('resnet50', Bottleneck, [3, 4, 6, 3], pretrained, progress,
+    return _resnet_custom('resnet50', Bottleneck, [3, 4, 6, 3], pretrained, progress,
                    **kwargs)
 
 
@@ -290,7 +305,7 @@ def custom_resnext50_32x4d(pretrained=False, progress=True, **kwargs):
     """
     kwargs['groups'] = 32
     kwargs['width_per_group'] = 4
-    return _resnet('resnext50_32x4d', Bottleneck, [3, 4, 6, 3],
+    return _resnet_custom('resnext50_32x4d', Bottleneck, [3, 4, 6, 3],
                    pretrained, progress, **kwargs)
 
 
@@ -306,7 +321,7 @@ def custom_wide_resnet50_2(pretrained=False, progress=True, **kwargs):
         progress (bool): If True, displays a progress bar of the download to stderr
     """
     kwargs['width_per_group'] = 64 * 2
-    return _resnet('wide_resnet50_2', Bottleneck, [3, 4, 6, 3],
+    return _resnet_custom('wide_resnet50_2', Bottleneck, [3, 4, 6, 3],
                    pretrained, progress, **kwargs)
 
 
@@ -322,5 +337,5 @@ def custom_wide_resnet50_4(pretrained=False, progress=True, **kwargs):
         progress (bool): If True, displays a progress bar of the download to stderr
     """
     kwargs['width_per_group'] = 64 * 4
-    return _resnet('wide_resnet50_4', Bottleneck, [3, 4, 6, 3],
+    return _resnet_custom('wide_resnet50_4', Bottleneck, [3, 4, 6, 3],
                    pretrained, progress, **kwargs)

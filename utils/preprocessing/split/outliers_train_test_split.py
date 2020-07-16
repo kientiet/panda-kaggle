@@ -2,6 +2,7 @@ import os
 import pandas as pd
 import numpy as np
 from utils.preprocessing.dataset.load_outliers_dataset import OutliersPandaDataset
+from utils.preprocessing.dataset.load_supervised_dataset import SupervisedDataset
 
 # Constant value
 data_dir = os.path.join(os.getcwd(), "data")
@@ -38,13 +39,13 @@ def load_train_data(train_table, transform, data_dir, loss_type, **kwags):
 
 
 def load_test_data(test_table, transform, data_dir, loss_type):
-  return OutliersPandaDataset(test_table, transform = transform, data_dir = data_dir, loss_type = loss_type)
+  return SupervisedDataset(test_table, transform = transform, data_dir = data_dir, loss_type = loss_type)
 
 
 def load_for_outliers(transform, data_dir, loss_type, **kwags):
   table = pd.read_csv(teacher_dir, index_col = 0)
   train, test = split_dataframe(table)
 
-  trainset = load_train_data(train, transform[0], data_dir, loss_type, **kwags)
-  testset = load_test_data(test, transform[1], data_dir, loss_type)
+  trainset = load_train_data(train, transform[:2], data_dir, loss_type, **kwags)
+  testset = load_test_data(test, transform[2], data_dir, loss_type)
   return trainset, testset
