@@ -47,16 +47,16 @@ class OutliersLoss(nn.Module):
 
     kl_loss = self.kl_loss(student_prob, teacher_prob)
 
-    # breakpoint()
     return kl_loss
 
 
   def forward(self, logits, hard_label, soft_logits, **kwags):
     hard_loss = self.cross_entropy(logits, hard_label)
     if kwags["running_mode"] == "training":
+      kwags["optimizer"].zero_grad()
 
       soft_loss = self.compute_kl_loss(logits, soft_logits)
-
+      # breakpoint()
       if not self.anneal or self.anneal is None:
         return hard_loss + self.coeff * soft_loss, hard_loss, soft_loss, self.coeff
       else:

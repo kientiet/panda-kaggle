@@ -1,14 +1,14 @@
 ---
 # Model configuration
-model_name: "multi/resnet18"
-backbone: "custom_resnet18"
+model_name: "multi/efficientnet-b0"
+backbone: "efficientnet-b0"
 num_classes: 6
 pretrained: true
 batch_size: 16
 stochastic_depth_prob: 0.8
 
 # Data method
-sample: "upsample"
+sample: null
 
 # Loss function
 loss_func: "crossentropy"
@@ -19,18 +19,18 @@ train_aug: standard_transforms
 test_aug: standard_transforms
 
 # optimizer config
-optimizer_type: "Over9000"
-max_lr: 0.01
+optimizer_type: "Adam"
+max_lr: 0.0005
 base_momentum: 0.85
 max_momentum: 0.9
 nestrov: false
-weight_decay: 0.00005
+weight_decay: 0
 
 # scheduler config
-scheduler_type: "1cycle"
-warmup: 0
+scheduler_type: "warmup_cosine"
+warmup: 5
 cool_down: 0
-total_epoch: 15
+total_epoch: 20
 
 # Other parameters
-data_dir: "train12x128x128"
+data_dir: "train16x128x128"

@@ -13,12 +13,12 @@ from trainer.distill.multil_teacher import TeacherTrainer
 from trainer.distill.student_multi import StudentMultiTrainer
 
 run_infernce = False
-data_dir = os.path.join(os.getcwd(), "data", "train12x128x128")
+data_dir = os.path.join(os.getcwd(), "data", "train16x128x128")
 train_save = os.path.join(os.getcwd(), "data", "multi_train.json")
 val_save = os.path.join(os.getcwd(), "data", "multi_val.json")
 
-radboud_teacher_dir = ["checkpoint/multi/resnet18/radboud/version1/epoch=13_v0.ckpt", "radboud"]
-karolinska_teacher_dir = ["checkpoint/multi/resnet18/karolinska/version1/epoch=13_v0.ckpt", "karolinska"]
+radboud_teacher_dir = ["checkpoint/multi/efficientnet-b0/radboud/version 0/epoch=21.ckpt", "radboud"]
+karolinska_teacher_dir = ["checkpoint/multi/efficientnet-b0/karolinska/version 2/epoch=21.ckpt", "karolinska"]
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -60,6 +60,7 @@ if __name__ == "__main__":
     train_table, val_table = run_teacher_infernce()
     train_table.to_csv(train_save)
     val_table.to_csv(val_save)
+    print("Done")
   else:
     train_table = pd.read_csv(train_save, index_col = 0)
     val_table = pd.read_csv(val_save, index_col = 0)

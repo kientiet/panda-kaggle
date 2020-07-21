@@ -1,10 +1,7 @@
 import torch
 import torch.nn as nn
 import torchvision
-from models.get_model import get_model
 from efficientnet_pytorch import EfficientNet
-
-from activation.mish import Mish
 
 class EfficientNetModel(nn.Module):
   def __init__(self,
@@ -13,10 +10,8 @@ class EfficientNetModel(nn.Module):
               ):
 
     super().__init__()
-    self.encoder = EfficientNet(model_name)
-    self.num_channel = list(self.encoder.children())[-1].in_features
-    self.encoder = nn.Sequential(*list(self.encoder.children())[:-2])
+    self.encoder = EfficientNet.from_pretrained(model_name, num_classes = kwags["num_classes"])
 
   def forward(self, inputs):
-    outputs = self.encoder(inputs)
+    outputs = self.encoder.forward(inputs)
     return outputs

@@ -7,7 +7,6 @@ import pytorch_lightning as pl
 import numpy as np
 
 from trainer.trainer import TrainerSkeleton
-from utils.preprocessing.split.supervised_train_test_split import load_dataframe
 from model_utils.loss_func.get_loss_func import get_loss_func
 from utils.evaluator.evaluator import Evaluator
 

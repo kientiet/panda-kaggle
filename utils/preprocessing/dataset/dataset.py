@@ -3,12 +3,23 @@ import torch
 import numpy as np
 from torch.utils.data import Dataset
 from utils.preprocessing.augment.get_transform import get_transform
+from utils.preprocessing.augment.randaug.policy import randaug_policies
+from utils.preprocessing.augment.randaug.randaug import apply_policy
 
 class PandaDataset(Dataset):
   def __init__(self, data_frame, transform, data_dir, loss_type):
     super().__init__()
     self.data_frame = data_frame
-    self.transform = get_transform(transform)
+
+    self.transform = None
+    if transform is not None:
+      if transform == "student_transformation":
+        self.policy = randaug_policies()
+        self.transform = apply_policy
+      else:
+        self.policy = None
+        self.transform = get_transform(transform)
+
     self.data_dir = data_dir
     self.loss_type = loss_type
 

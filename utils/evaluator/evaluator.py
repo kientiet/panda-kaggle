@@ -1,5 +1,6 @@
 import itertools
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.metrics import accuracy_score, cohen_kappa_score, confusion_matrix
 from collections import Counter
@@ -9,9 +10,13 @@ class Evaluator:
   def __init__(self, valset, threshold = 0.5):
     self.valset = valset
 
-  def evaluate_on_test_set(self, y_pred, y_pred_label = None):
+  def evaluate_on_test_set(self, y_pred, y_true = None, **kwags):
     ## Split y_pred and y_true into dictionary
-    y_true, table = self.valset.get_test_label()
+    if len(y_true) == 0:
+      y_true, table = self.valset.get_test_label()
+    else:
+      table = pd.DataFrame(columns=["data_provider"], data = kwags["data_provider"][np.newaxis, :].T)
+
     total_fig = self.plot_confusion_matrix(y_true, y_pred)
 
     raboud_index = table["data_provider"] == "radboud"

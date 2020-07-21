@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import random
-import models.get_model as get_model
+import models.resnet as get_model
 from torchvision.models.resnet import BasicBlock, Bottleneck
 
 def conv3x3(in_planes, out_planes, stride=1, groups=1, dilation=1):
@@ -19,7 +19,8 @@ class BasicBlock(nn.Module):
     expansion = 1
 
     def __init__(self, inplanes, planes, stride=1, downsample=None, groups=1,
-                 base_width=64, dilation=1, norm_layer=None, stochastic_depth_prob = None):
+                 base_width=64, dilation=1, norm_layer=None, stochastic_depth_prob = None,
+                 split_batch_norm = False):
         super(BasicBlock, self).__init__()
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
@@ -29,27 +30,34 @@ class BasicBlock(nn.Module):
             raise NotImplementedError("Dilation > 1 not supported in BasicBlock")
         # Both self.conv1 and self.downsample layers downsample the input when stride != 1
         self.conv1 = conv3x3(inplanes, planes, stride)
-        self.bn1 = norm_layer(planes)
         self.relu = nn.ReLU(inplace=True)
         self.conv2 = conv3x3(planes, planes)
-        self.bn2 = norm_layer(planes)
+
+        if not split_batch_norm:
+          self.bn1 = nn.ModuleList([norm_layer(planes)])
+          self.bn2 = nn.ModuleList([norm_layer(planes)])
+        else:
+          self.bn1 = nn.ModuleList([norm_layer(planes), norm_layer(planes)])
+          self.bn2 = nn.ModuleList([norm_layer(planes), norm_layer(planes)])
+
         self.downsample = downsample
         self.stride = stride
 
         self.stochastic_depth_prob = stochastic_depth_prob
 
-    def forward(self, x):
+    def forward(self, inputs):
       assert self.stochastic_depth_prob is not None
+      x, index = inputs[0], inputs[1]
       identity = x
       out = None
 
       if random.uniform(0, 1) < self.stochastic_depth_prob or (not self.training):
         out = self.conv1(x)
-        out = self.bn1(out)
+        out = self.bn1[index](out)
         out = self.relu(out)
 
         out = self.conv2(out)
-        out = self.bn2(out)
+        out = self.bn2[index](out)
 
 
       if self.downsample is not None:
@@ -65,7 +73,7 @@ class BasicBlock(nn.Module):
 
       out = self.relu(out)
 
-      return out
+      return (out, index)
 
 
 class Bottleneck(nn.Module):
@@ -78,40 +86,49 @@ class Bottleneck(nn.Module):
     expansion = 4
 
     def __init__(self, inplanes, planes, stride=1, downsample=None, groups=1,
-                 base_width=64, dilation=1, norm_layer=None, stochastic_depth_prob = None):
+                 base_width=64, dilation=1, norm_layer=None, stochastic_depth_prob = None,
+                 split_batch_norm = False):
       super(Bottleneck, self).__init__()
       if norm_layer is None:
           norm_layer = nn.BatchNorm2d
       width = int(planes * (base_width / 64.)) * groups
       # Both self.conv2 and self.downsample layers downsample the input when stride != 1
       self.conv1 = conv1x1(inplanes, width)
-      self.bn1 = norm_layer(width)
       self.conv2 = conv3x3(width, width, stride, groups, dilation)
-      self.bn2 = norm_layer(width)
       self.conv3 = conv1x1(width, planes * self.expansion)
-      self.bn3 = norm_layer(planes * self.expansion)
       self.relu = nn.ReLU(inplace=True)
       self.downsample = downsample
       self.stride = stride
 
+      if not split_batch_norm:
+        self.bn1 = nn.ModuleList([norm_layer(width)])
+        self.bn2 = nn.ModuleList([norm_layer(width)])
+        self.bn3 = nn.ModuleList([norm_layer(planes * self.expansion)])
+      else:
+        self.bn1 = nn.ModuleList([norm_layer(width), norm_layer(width)])
+        self.bn2 = nn.ModuleList([norm_layer(width), norm_layer(width)])
+        self.bn3 = nn.ModuleList([norm_layer(planes * self.expansion), norm_layer(planes * self.expansion)])
+
+
       self.stochastic_depth_prob = stochastic_depth_prob
 
-    def forward(self, x):
+    def forward(self, inputs):
       assert self.stochastic_depth_prob is not None
+      x, index = inputs[0], inputs[1]
       identity = x
       out = None
 
       if random.uniform(0, 1) < self.stochastic_depth_prob or (not self.training):
         out = self.conv1(x)
-        out = self.bn1(out)
+        out = self.bn1[index](out)
         out = self.relu(out)
 
         out = self.conv2(out)
-        out = self.bn2(out)
+        out = self.bn2[index](out)
         out = self.relu(out)
 
         out = self.conv3(out)
-        out = self.bn3(out)
+        out = self.bn3[index](out)
 
       if self.downsample is not None:
         identity = self.downsample(x)
@@ -125,19 +142,20 @@ class Bottleneck(nn.Module):
         out = self.stochastic_depth_prob * out + identity
 
       out = self.relu(out)
-      return out
+      return (out, index)
 
 
-class ResNet(nn.Module):
+class CustomResNet(nn.Module):
 
-    def __init__(self, block, layers, num_classes=1000, zero_init_residual=False,
+    def __init__(self, block, layers, num_classes=1000, zero_init_residual=True,
                  groups=1, width_per_group=64, replace_stride_with_dilation=None,
-                 norm_layer=None, stochastic_depth_prob = 0.5):
-      super(ResNet, self).__init__()
+                 norm_layer=None, stochastic_depth_prob = 0.5, split_batch_norm = False):
+      super(CustomResNet, self).__init__()
       if norm_layer is None:
           norm_layer = nn.BatchNorm2d
       self._norm_layer = norm_layer
 
+      self.split_batch_norm = split_batch_norm
       self.inplanes = 64
       self.dilation = 1
       if replace_stride_with_dilation is None:
@@ -149,6 +167,7 @@ class ResNet(nn.Module):
                             "or a 3-element tuple, got {}".format(replace_stride_with_dilation))
       self.groups = groups
       self.base_width = width_per_group
+
       self.conv1 = nn.Conv2d(3, self.inplanes, kernel_size=7, stride=2, padding=3,
                               bias=False)
       self.bn1 = norm_layer(self.inplanes)
@@ -156,6 +175,7 @@ class ResNet(nn.Module):
       self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
 
       # ? ResNet with Stochastic Depth
+      self.num_channel = 0
       self.stochastic_depth_prob = stochastic_depth_prob
       self.total_blocks, self.current_layers = sum(layers), 1
       self.layer1 = self._make_layer(block, 64, layers[0])
@@ -174,8 +194,8 @@ class ResNet(nn.Module):
 
       self.last_layer_dropout = nn.Dropout(0.5)
 
-      self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-      self.fc = nn.Linear(512 * block.expansion, num_classes)
+      # self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+      # self.fc = nn.Linear(512 * block.expansion, num_classes)
 
       for m in self.modules():
         if isinstance(m, nn.Conv2d):
@@ -190,9 +210,11 @@ class ResNet(nn.Module):
       if zero_init_residual:
         for m in self.modules():
           if isinstance(m, Bottleneck):
-            nn.init.constant_(m.bn3.weight, 0)
+            for layer in m.bn3:
+              nn.init.constant_(layer.weight, 0)
           elif isinstance(m, BasicBlock):
-            nn.init.constant_(m.bn2.weight, 0)
+            for layer in m.bn2:
+              nn.init.constant_(layer.weight, 0)
 
 
     def _make_layer(self, block, planes, blocks, stride=1, dilate=False):
@@ -212,54 +234,74 @@ class ResNet(nn.Module):
 
       layers = []
       layers.append(block(self.inplanes, planes, stride, downsample, self.groups,
-                        self.base_width, previous_dilation, norm_layer))
+                        self.base_width, previous_dilation, norm_layer, split_batch_norm = self.split_batch_norm))
       self.inplanes = planes * block.expansion
       for _ in range(1, blocks):
         layers.append(block(self.inplanes, planes, groups=self.groups,
                             base_width=self.base_width, dilation=self.dilation,
-                            norm_layer=norm_layer))
+                            norm_layer=norm_layer, split_batch_norm = self.split_batch_norm))
 
       for index, layer in enumerate(layers):
         depth_prob = 1.0 - (self.current_layers + index) / self.total_blocks * (1.0 - self.stochastic_depth_prob)
         layer.stochastic_depth_prob = depth_prob
 
+      self.num_channel = max(self.num_channel, planes)
+
       return nn.Sequential(*layers)
 
-    def _forward_impl(self, x):
+    def _forward_impl(self, x, index = 0):
       # See note [TorchScript super()]
       x = self.conv1(x)
       x = self.bn1(x)
       x = self.relu(x)
       x = self.maxpool(x)
 
-      x = self.layer1(x)
-      x = self.layer2(x)
-      x = self.layer3(x)
+      x, _ = self.layer1((x, index))
+      x, _ = self.layer2((x, index))
+      x, _ = self.layer3((x, index))
 
-      if self.last_layer_dropout > 0:
-        x = self.last_layer_dropout(x)
+      # if self.last_layer_dropout > 0:
+      #   x = self.last_layer_dropout(x)
 
-      x = self.layer4(x)
+      x, _ = self.layer4((x, index))
 
-      x = self.avgpool(x)
-      x = torch.flatten(x, 1)
-      x = self.fc(x)
+      # x = self.avgpool(x)
+      # x = torch.flatten(x, 1)
+      # x = self.fc(x)
 
       return x
 
-    def forward(self, x):
-      return self._forward_impl(x)
+    def forward(self, x, index):
+      return self._forward_impl(x, index)
 
+def custom_load_state_dict(model, pretrained_model):
+  '''
+    model: is the new model
+    pretrained: is to load from pretrained
+  '''
+  pretraied_state = pretrained_model.state_dict()
+  model_state = model.state_dict()
+  for name in model_state.keys():
+    if "bn" in name:
+      bn_name = name.split(".")
+      if bn_name[-2].isnumeric():
+        del bn_name[-2]
+
+      bn_name = ".".join(bn_name)
+      model_state[name].copy_(pretraied_state[bn_name])
+    else:
+      model_state[name].copy_(pretraied_state[name])
+
+  return model_state
 
 def _resnet_custom(arch, block, layers, pretrained, progress, **kwargs):
-    model = ResNet(block, layers, **kwargs)
+    model = CustomResNet(block, layers, **kwargs)
     if pretrained:
       print("\n\n>> Load from pretrained")
       pretrained_model = get_model.get_model(arch, pretrained = True)
-      model_dict = pretrained_model.state_dict()
-      model.load_state_dict(model_dict)
+      model_state = custom_load_state_dict(model, pretrained_model)
+      model.load_state_dict(model_state)
 
-    print("Here", model.stochastic_depth_prob)
     return model
 
 
@@ -270,6 +312,7 @@ def custom_resnet18(pretrained=False, progress=True, **kwargs):
         pretrained (bool): If True, returns a model pre-trained on ImageNet
         progress (bool): If True, displays a progress bar of the download to stderr
     """
+    print("In custom resnet")
     return _resnet_custom('resnet18', BasicBlock, [2, 2, 2, 2], pretrained, progress,
                    **kwargs)
 
@@ -339,3 +382,17 @@ def custom_wide_resnet50_4(pretrained=False, progress=True, **kwargs):
     kwargs['width_per_group'] = 64 * 4
     return _resnet_custom('wide_resnet50_4', Bottleneck, [3, 4, 6, 3],
                    pretrained, progress, **kwargs)
+
+model_dict = {
+  "custom_resnet18": custom_resnet18,
+  "custom_resnet34": custom_resnet34,
+  "custom_resnet50": custom_resnet50,
+  "custom_resnet50_32x4d": custom_resnext50_32x4d,
+  "custom_wide_resnet50_2": custom_wide_resnet50_2,
+  "custom_wide_resnet50_4": custom_wide_resnet50_4
+}
+
+
+def get_custom_model(model_name, **kwags):
+  assert model_name in model_dict
+  return model_dict[model_name](**kwags)

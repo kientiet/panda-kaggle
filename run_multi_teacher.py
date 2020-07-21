@@ -29,7 +29,7 @@ if __name__ == "__main__":
     checkpoint_path = os.path.join(os.getcwd(), "checkpoint", model.model_name, data_provider)
     checkpoint_callback = ModelCheckpoint(
         filepath = checkpoint_path,
-        save_top_k = 5,
+        save_top_k = 1,
         verbose = True,
         monitor = 'kappa_score/kappa_score',
         mode = 'max'

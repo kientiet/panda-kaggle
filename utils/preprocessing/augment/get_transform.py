@@ -6,8 +6,6 @@ standard_transforms = transforms.Compose([
   transforms.RandomVerticalFlip(p = 0.5),
   transforms.RandomHorizontalFlip(p = 0.5),
   transforms.RandomRotation(15),
-  transforms.ToTensor(),
-  AdjustTransform(),
   # transforms.Normalize([1.0-0.90949707, 1.0-0.8188697, 1.0-0.87795304], [0.36357649, 0.49984502, 0.40477625])
 ])
 

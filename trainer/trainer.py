@@ -6,10 +6,10 @@ import torch.optim as optim
 import pytorch_lightning as pl
 import numpy as np
 
-from utils.preprocessing.split.supervised_train_test_split import load_dataframe
+from utils.preprocessing.split.supervised.train_test_split import load_dataframe
 from utils.evaluator.evaluator import Evaluator
 
-from model_utils.optimizer.radam import Over9000
+from model_utils.optimizer.radam import Over9000, LookaheadAdam
 from model_utils.loss_func.get_loss_func import get_loss_func
 from model_utils.scheduler.scheduler_wrapper import SchedulerWrapper
 
@@ -59,7 +59,7 @@ class TrainerSkeleton(pl.LightningModule):
   def training_step(self, train_batch, batch_idx):
     images, labels = train_batch
     loss, _  = self.forward(images, labels)
-    logs = {"learning_rate": self.optimizer.param_groups[0]["lr"], "train_loss": loss.item()}
+    logs = {"learning_rate": self.optimizer.param_groups[-1]["lr"], "train_loss": loss.item()}
     return {"loss": loss, "log": logs}
 
 
@@ -67,11 +67,12 @@ class TrainerSkeleton(pl.LightningModule):
     self.optimizer.step()
     self.optimizer.zero_grad()
 
-    weight = self.project_layer.head[1].weight.view(-1)
-    self.logger.experiment.add_histogram("project_layer_1", weight, self.global_step)
+    if hasattr(self, "project_layer"):
+      weight = self.project_layer.head[1].weight.view(-1)
+      self.logger.experiment.add_histogram("project_layer_1", weight, self.global_step)
 
-    weight = self.project_layer.head[5].weight.view(-1)
-    self.logger.experiment.add_histogram("project_layer_5", weight, self.global_step)
+      weight = self.project_layer.head[5].weight.view(-1)
+      self.logger.experiment.add_histogram("project_layer_5", weight, self.global_step)
 
     self.scheduler.step()
 
@@ -97,15 +98,13 @@ class TrainerSkeleton(pl.LightningModule):
 
     return self.optimizer
 
+  def get_grad_parameters(self):
+    pass
 
   def reset_optimizer(self):
     # Initialize optimizer
-    params = []
-    for name, param in self.encoder.named_parameters():
-      if param.requires_grad:
-        params.append(param)
+    params = self.get_grad_parameters()
 
-    params = params + list(self.project_layer.parameters())
     if self.optimizer_type == "SGD":
       self.optimizer = optim.SGD(params,
                                 lr = self.max_lr,
@@ -114,8 +113,12 @@ class TrainerSkeleton(pl.LightningModule):
                                 nesterov = self.nestrov)
     elif self.optimizer_type == "Adam":
       self.optimizer = optim.Adam(params, lr = self.max_lr, weight_decay = self.weight_decay)
-    else:
-      self.optimizer = Over9000(params, lr = self.max_lr, weight_decay = self.weight_decay)
+    elif self.optimizer_type == "Over9000":
+      self.optimizer = Over9000(params, lr = self.max_lr, weight_decay = self.weight_decay, betas=(0.9, 0.999))
+    elif self.optimizer_type == "lookahead":
+      self.optimizer = LookaheadAdam(params, alpha = 0.6, k = 6, lr = self.max_lr, weight_decay = self.weight_decay, betas=(0.8, 0.999))
+    elif self.optimizer_type == "RMSprop":
+      self.optimizer = optim.RMSprop(params, lr = self.max_lr, weight_decay = self.weight_decay, momentum = 0.9)
 
 
   def reset_scheduler(self):
@@ -123,7 +126,8 @@ class TrainerSkeleton(pl.LightningModule):
     self.scheduler = SchedulerWrapper(self.scheduler_type,
                                       self.optimizer,
                                       total_epoch = self.get_max_epoches(),
-                                      iteration_per_epoch = len(self.trainloader))
+                                      iteration_per_epoch = len(self.trainloader),
+                                      warmup = self.warmup)
 
   def freeze_model(self):
     print(">> Freeze all except batchnorm")
@@ -146,11 +150,15 @@ class TrainerSkeleton(pl.LightningModule):
 
 
   def validation_epoch_end(self, outputs):
-    y_pred = []
+    y_pred, y_true, data_provider = [], [], []
     for batch in outputs:
       y_pred = np.concatenate((y_pred, batch["y_pred"]))
+      if "y_true" in batch:
+        y_true = np.concatenate((y_true, batch["y_true"]))
+        data_provider = np.concatenate((data_provider, batch["data_provider"]))
 
-    tensorboard_logs, total_fig, fig_karolinska, fig_radboud = self.evaluator.evaluate_on_test_set(y_pred = y_pred)
+    tensorboard_logs, total_fig, fig_karolinska, fig_radboud = self.evaluator.evaluate_on_test_set(y_pred = y_pred, y_true = y_true, \
+      data_provider = data_provider)
     if total_fig is not None: self.logger.experiment.add_figure("confusion_matrix", total_fig, self.at_epoch)
     if fig_karolinska is not None: self.logger.experiment.add_figure("karolinska_confusion_matrix", fig_karolinska, self.at_epoch)
     if fig_radboud is not None: self.logger.experiment.add_figure("radboud_confusion_matrix", fig_radboud, self.at_epoch)

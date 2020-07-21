@@ -5,13 +5,15 @@ from tqdm import tqdm
 import zipfile
 import numpy as np
 
+from joblib import Parallel, delayed
+
 TRAIN = os.path.join(os.getcwd(), "data", "prostate-cancer-grade-assessment", "train_images")
 MASKS = os.path.join(os.getcwd(), "data", "prostate-cancer-grade-assessment", "train_label_masks")
 OUT_TRAIN = os.path.join(os.getcwd(), "data", "train")
 OUT_MASKS = os.path.join(os.getcwd(), "data", "mask")
 
 tile_size = 256
-n_tiles = 12
+n_tiles = 16
 
 def get_tiles(img, mode=0):
     result = []
@@ -39,18 +41,22 @@ def get_tiles(img, mode=0):
     return result, n_tiles_with_info >= n_tiles
 
 
+def each_process(name):
+  img = skimage.io.MultiImage(os.path.join(TRAIN, name + '.tiff'))[-1]
+  tiles, _ = get_tiles(img)
+  for t in tiles:
+    img, idx = t['img'],  t['idx']
+    cv2.imwrite(os.path.join(OUT_TRAIN, f"{name}_{idx}.png"), img)
+
+
+
 def zip_data():
   print(OUT_TRAIN)
   x_tot,x2_tot = [],[]
   names = [name.split(".")[0] for name in os.listdir(TRAIN)]
 
-  for name in tqdm(names):
-    img = skimage.io.MultiImage(os.path.join(TRAIN, name + '.tiff'))[1]
-    tiles, _ = get_tiles(img)
-    for t in tiles:
-      img, idx = t['img'],  t['idx']
-      cv2.imwrite(os.path.join(OUT_TRAIN, f"{name}_{idx}.png"), img)
-
+  processed_list = Parallel(n_jobs = -1, prefer="processes")(delayed(each_process)(name) \
+                                                    for name in tqdm(names))
 
 if __name__ == "__main__":
   zip_data()

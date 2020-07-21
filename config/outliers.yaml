@@ -1,7 +1,7 @@
 ---
 # Model configuration
-model_name: "outliers/resnet50"
-backbone: "custom_resnet50"
+model_name: "outliers/resnet18"
+backbone: "custom_resnet18"
 num_classes: 6
 pretrained: true
 batch_size: 16
@@ -36,7 +36,7 @@ nestrov: false
 weight_decay: 0.00005
 
 # scheduler config
-scheduler_type: "exp"
+scheduler_type: "1cycle"
 warmup: 0
 cool_down: 0
 total_epoch: 100

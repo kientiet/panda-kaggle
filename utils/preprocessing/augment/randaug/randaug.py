@@ -157,10 +157,7 @@ def apply_policy(policy, pil_img, use_mean_std=True):
   # Always cutout
   # xform_fn = cutout.pil_transformer(1.0, 10, img_shape)
   # pil_img = xform_fn(pil_img)
-  return transforms.Compose([
-    transforms.ToTensor(),
-    AdjustTransform()
-  ])(pil_img.convert("RGB"))
+  return pil_img.convert("RGB")
 
 
 class TransformFunction(object):

@@ -1,36 +1,37 @@
 ---
 # Model configuration
-model_name: "baseline/efficientnet"
-backbone: "efficientnet_b0"
-num_classes: 6
+model_name: "baseline/efficientnet-b0"
+backbone: "efficientnet-b0"
+num_classes: 5
 pretrained: true
 batch_size: 16
 
 # Data method
-sample: "downsample"
+sample: null
 
 # Loss function
-loss_func: "crossentropy"
-temperature: 1.2
+loss_func: "bceloss"
+temperature: 1.0
 
 # Transformation
-train_transformation: standard_transforms
-test_transformation: null
+train_aug: standard_transforms
+test_aug: standard_transforms
 
 # optimizer config
-optimizer_type: "Over9000"
-max_lr: 0.01
+optimizer_type: "Adam"
+max_lr: 0.0005
 base_momentum: 0.85
 max_momentum: 0.9
 nestrov: false
-weight_decay: 0.00005
+weight_decay: 0
 
 # scheduler config
-scheduler_type: "1cycle"
-total_epoch: 15
+scheduler_type: "warmup_cosine"
+total_epoch: 20
 cool_down: 0
-warmup: 0
+warmup: 5
 
 # Other parameters
 dropout: 0.4
-data_dir: "normalized_train12x128x128"
+data_dir: "train16x128x128"
+fix_res: "train16x256x256"

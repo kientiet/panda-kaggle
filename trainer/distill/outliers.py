@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from utils.preprocessing.split.outliers_train_test_split import load_for_outliers
+from utils.preprocessing.split.outliers.train_test_split import load_for_outliers
 from trainer.distill.trainer import DistillTrainerSkeleton
 
 # Model Architecture
@@ -81,7 +81,7 @@ class OutliersTrainer(DistillTrainerSkeleton):
 
 
     if running_mode == "training":
-      loss, hard_loss, soft_loss, coeff = self.loss_func(logits, hard_labels, soft_logits, running_mode = running_mode)
+      loss, hard_loss, soft_loss, coeff = self.loss_func(logits, hard_labels, soft_logits, running_mode = running_mode, optimizer = self.optimizer)
       return loss, hard_loss, soft_loss, coeff
     else:
       loss = self.loss_func(logits, hard_labels, None, running_mode = running_mode)

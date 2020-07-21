@@ -3,8 +3,10 @@ import torch
 import pytorch_lightning as pl
 from trainer.distill.trainer import DistillTrainerSkeleton
 
-from utils.preprocessing.split.bam_train_test_split import load_for_teacher
+from utils.preprocessing.split.bam.teacher_train_test_split import load_for_teacher
+
 from models.resnet import ResNetModel
+from models.efficientnet import EfficientNetModel
 from models.project_layer import ProjectLayer
 
 config_dir = os.path.join(os.getcwd(), "config", "distill_teacher.yaml")
@@ -33,24 +35,37 @@ class TeacherTrainer(DistillTrainerSkeleton):
     self.train_dataloader()
     self.val_dataloader()
 
-    self.encoder = ResNetModel(self.stream["backbone"], pretrained = self.stream["pretrained"], \
-      stochastic_depth_prob = self.stream["stochastic_depth_prob"])
-    self.project_layer = ProjectLayer(self.encoder.num_channel, self.stream["num_classes"])
+    self.encoder = EfficientNetModel(self.stream["backbone"], num_classes = self.stream["num_classes"])
+    # self.project_layer = ProjectLayer(self.encoder.num_channel, self.stream["num_classes"])
 
     # Optimzer and scheduler
     self.configure_optimizers(self.stream)
 
 
   def forward(self, images, labels):
-    # Prepare the batch
-    batch_size, image_batch, channels, height, width = images.shape
-    images = images.reshape(-1, channels, height, width)
+    if isinstance(self.encoder, ResNetModel):
+      # Prepare the batch
+      batch_size, image_batch, channels, height, width = images.shape
+      images = images.reshape(-1, channels, height, width)
 
-    # Forward pass
-    logits = self.encoder(images)
-    shape = logits.shape
-    # concatenate the output for tiles into a single map
-    logits = logits.view(-1, image_batch, shape[1], shape[2], shape[3]).permute(0, 2, 1, 3, 4).contiguous() \
-      .view(-1, shape[1], shape[2] * image_batch, shape[3])
-    logits = self.project_layer(logits)
-    return self.loss_func(logits, labels), logits
+      # Forward pass
+      logits = self.encoder(images)
+      shape = logits.shape
+      # concatenate the output for tiles into a single map
+      logits = logits.view(-1, image_batch, shape[1], shape[2], shape[3]).permute(0, 2, 1, 3, 4).contiguous() \
+        .view(-1, shape[1], shape[2] * image_batch, shape[3])
+      logits = self.project_layer(logits)
+      return self.loss_func(logits, labels), logits
+    else:
+      logits = self.encoder(images)
+      return self.loss_func(logits, labels), logits
+
+  def get_grad_parameters(self):
+    params = []
+    for name, param in self.encoder.named_parameters():
+      if param.requires_grad:
+        params.append(param)
+
+    # params = params + list(self.project_layer.parameters())
+
+    return params
